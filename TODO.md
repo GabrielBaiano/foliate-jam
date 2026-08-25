@@ -6,19 +6,19 @@ Este documento rastreia as melhorias, novas funcionalidades, otimizações de pe
 
 ## ⚡ Fase 0: Performance & Arquitetura (Backend, DB & WebSockets)
 
-- [ ] **Modo WAL no SQLite & Otimização de Concorrência**
+- [x] **Modo WAL no SQLite & Otimização de Concorrência**
   - *Descrição:* Configurar `PRAGMA journal_mode = WAL;` e `PRAGMA synchronous = NORMAL;` para evitar locks de tabela durante leituras/escritas concorrentes.
   - *Arquivos envolvidos:* [`db.js`](file:///home/gabrielgama/.gemini/antigravity/scratch/paperback/db.js)
-- [ ] **Índices no Banco de Dados SQLite**
+- [x] **Índices no Banco de Dados SQLite**
   - *Descrição:* Adicionar índices explícitos para `room_id`, `discord_id` e `last_active` nas tabelas `room_members`, `highlights` e `rooms`.
   - *Arquivos envolvidos:* [`db.js`](file:///home/gabrielgama/.gemini/antigravity/scratch/paperback/db.js)
-- [ ] **Throttling de Cursor ao Vivo via WebSockets**
+- [x] **Throttling de Cursor ao Vivo via WebSockets**
   - *Descrição:* Aplicar throttling de 30-50ms na transmissão dos eventos `mousemove` do cursor dos leitores.
   - *Arquivos envolvidos:* [`bookclub.js`](file:///home/gabrielgama/.gemini/antigravity/scratch/paperback/bookclub.js), [`server.js`](file:///home/gabrielgama/.gemini/antigravity/scratch/paperback/server.js)
-- [ ] **Batching / Debounce de Posição (`handleRelocate`)**
+- [x] **Batching / Debounce de Posição (`handleRelocate`)**
   - *Descrição:* Manter a posição em memória e agrupar atualizações no banco SQLite para reduzir IO excessivo em navegação rápida.
   - *Arquivos envolvidos:* [`server.js`](file:///home/gabrielgama/.gemini/antigravity/scratch/paperback/server.js)
-- [ ] **Eliminação de Chamadas N+1 ao Supabase Storage**
+- [x] **Eliminação de Chamadas N+1 ao Supabase Storage**
   - *Descrição:* Otimizar checagem de existência do arquivo EPUB no endpoint `/api/my-rooms` armazenando o estado na tabela `rooms` em vez de chamar `.list()` em loop.
   - *Arquivos envolvidos:* [`server.js`](file:///home/gabrielgama/.gemini/antigravity/scratch/paperback/server.js)
 
