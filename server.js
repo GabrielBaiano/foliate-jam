@@ -934,19 +934,45 @@ async function handleJoin(ws, wsId, data, user) {
     });
 }
 
-async function handleRelocate(ws, data, user) {
+const pendingRelocations = new Map(); // key `${roomId}:${discordId}` -> { cfi, fraction, chapter, timestamp }
+
+// Periodic flush of pending relocations to SQLite database (runs every 3s)
+setInterval(async () => {
+    if (pendingRelocations.size === 0) return;
+    const entries = Array.from(pendingRelocations.entries());
+    pendingRelocations.clear();
+
+    for (const [key, item] of entries) {
+        const [roomId, discordId] = key.split(':');
+        try {
+            await dbRun(`
+                UPDATE room_members
+                SET cfi = ?, fraction = ?, last_active = ?, chapter = ?
+                WHERE room_id = ? AND discord_id = ?
+            `, [item.cfi, item.fraction, item.timestamp, item.chapter, roomId, discordId]);
+        } catch (err) {
+            console.error('[DB Batch Relocate Error]', err.message);
+        }
+    }
+}, 3000);
+
+function handleRelocate(ws, data, user) {
     const client = clients.get(ws);
     if (!client) return;
 
     const { roomId, wsId } = client;
     const { cfi, fraction, chapter } = data;
+    const nowIso = new Date().toISOString();
 
-    await dbRun(`
-        UPDATE room_members
-        SET cfi = ?, fraction = ?, last_active = ?, chapter = ?
-        WHERE room_id = ? AND discord_id = ?
-    `, [cfi, fraction, new Date().toISOString(), chapter || '', roomId, user.discord_id]);
+    // Store in memory batch queue for periodic SQLite persistence
+    pendingRelocations.set(`${roomId}:${user.discord_id}`, {
+        cfi,
+        fraction,
+        chapter: chapter || '',
+        timestamp: nowIso
+    });
 
+    // Instantly broadcast to active room peers without blocking on DB write
     broadcastToRoom(roomId, ws, {
         type: 'member_relocated',
         wsId,
@@ -1048,8 +1074,22 @@ function handleDisconnect(ws) {
     const client = clients.get(ws);
     if (!client) return;
 
-    const { roomId, wsId, name } = client;
+    const { roomId, wsId, name, discordId } = client;
     clients.delete(ws);
+
+    // Flush any pending position relocation immediately on disconnect
+    const key = `${roomId}:${discordId}`;
+    if (pendingRelocations.has(key)) {
+        const item = pendingRelocations.get(key);
+        pendingRelocations.delete(key);
+        dbRun(`
+            UPDATE room_members
+            SET cfi = ?, fraction = ?, last_active = ?, chapter = ?
+            WHERE room_id = ? AND discord_id = ?
+        `, [item.cfi, item.fraction, item.timestamp, item.chapter, roomId, discordId]).catch(err => {
+            console.error('[DB Disconnect Flush Error]', err.message);
+        });
+    }
 
     console.log(`[Leave] ${name} left Room: ${roomId}`);
 
