@@ -193,6 +193,25 @@ async function getAuthUser(req) {
     }
 }
 
+// Get authenticated user or auto-create a Guest user profile
+async function getOrCreateAuthUser(req, res) {
+    let user = await getAuthUser(req);
+    if (!user) {
+        const guestId = 'guest-' + Math.random().toString(36).substring(2, 10);
+        const avatarIdx = Math.floor(Math.random() * 5);
+        user = await upsertUser({
+            discord_id: guestId,
+            username: 'Guest_' + guestId.slice(-4),
+            avatar_url: `https://cdn.discordapp.com/embed/avatars/${avatarIdx}.png`
+        });
+        if (res) {
+            const sessionToken = jwt.sign({ discord_id: user.discord_id, isGuest: true }, JWT_SECRET, { expiresIn: '7d' });
+            res.cookie('token', sessionToken, getCookieOptions(req));
+        }
+    }
+    return user;
+}
+
 // --- Discord OAuth2 API Routes ---
 
 // 1. Redirect to Discord OAuth2 or login mock user if running locally or keys are missing
@@ -269,6 +288,24 @@ app.get('/api/auth/discord/callback', async (req, res) => {
             avatar_url: avatarUrl
         });
 
+        // Migrate any previous guest session activity to the authenticated Discord user
+        const previousToken = req.cookies?.token;
+        if (previousToken) {
+            try {
+                const prevPayload = jwt.verify(previousToken, JWT_SECRET);
+                if (prevPayload.discord_id && prevPayload.discord_id.startsWith('guest-') && prevPayload.discord_id !== userData.id) {
+                    const guestId = prevPayload.discord_id;
+                    await dbRun('UPDATE OR IGNORE room_members SET discord_id = ? WHERE discord_id = ?', [userData.id, guestId]);
+                    await dbRun('UPDATE OR IGNORE highlights SET discord_id = ? WHERE discord_id = ?', [userData.id, guestId]);
+                    await dbRun('UPDATE OR IGNORE rooms SET creator_id = ? WHERE creator_id = ?', [userData.id, guestId]);
+                    await dbRun('DELETE FROM users WHERE discord_id = ?', [guestId]);
+                    console.log(`[Guest Migration] Migrated guest ${guestId} to Discord user ${userData.username} (${userData.id})`);
+                }
+            } catch (err) {
+                console.warn('[Guest Migration Warning]', err.message);
+            }
+        }
+
         const sessionToken = jwt.sign({ discord_id: userData.id }, JWT_SECRET, { expiresIn: '7d' });
         res.cookie('token', sessionToken, getCookieOptions(req));
 
@@ -288,7 +325,15 @@ app.get('/api/auth/me', async (req, res) => {
     if (!user) {
         return res.json({ loggedIn: false });
     }
-    res.json({ loggedIn: true, user });
+    const isGuest = user.discord_id.startsWith('guest-');
+    res.json({ loggedIn: true, isGuest, user });
+});
+
+// 4. Guest login endpoint
+app.post('/api/auth/guest', async (req, res) => {
+    const user = await getOrCreateAuthUser(req, res);
+    const isGuest = user.discord_id.startsWith('guest-');
+    res.json({ success: true, isGuest, user });
 });
 
 // 4. Logout endpoint
@@ -377,10 +422,7 @@ app.get('/api/my-rooms', async (req, res) => {
 
 // Create Room via epub upload
 app.post('/api/rooms', upload.single('book'), async (req, res) => {
-    const user = await getAuthUser(req);
-    if (!user) {
-        return res.status(401).json({ error: 'Authentication required. Please login with Discord.' });
-    }
+    const user = await getOrCreateAuthUser(req, res);
 
     if (!req.file) {
         return res.status(400).json({ error: 'No book file uploaded' });
@@ -733,10 +775,14 @@ wss.on('connection', async (ws, req) => {
     }
 
     if (!user) {
-        console.warn(`[WS Warning] Unauthenticated WebSocket connection. Closing.`);
-        ws.send(JSON.stringify({ type: 'error', message: 'Authentication required. Please login with Discord.' }));
-        ws.close();
-        return;
+        const guestId = 'guest-' + Math.random().toString(36).substring(2, 10);
+        const avatarIdx = Math.floor(Math.random() * 5);
+        user = await upsertUser({
+            discord_id: guestId,
+            username: 'Guest_' + guestId.slice(-4),
+            avatar_url: `https://cdn.discordapp.com/embed/avatars/${avatarIdx}.png`
+        });
+        console.log(`[WS Auth] Auto-created guest reader: ${user.username}`);
     }
 
     ws.on('message', async (message) => {

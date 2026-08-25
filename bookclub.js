@@ -2107,8 +2107,24 @@ async function checkAuth() {
         });
         const data = await res.json();
         
+        if (!data.loggedIn) {
+            // Auto-provision guest profile for instant zero-friction reading
+            try {
+                const guestRes = await fetch('/api/auth/guest', { method: 'POST' });
+                if (guestRes.ok) {
+                    const guestData = await guestRes.json();
+                    if (guestData.user) {
+                        return checkAuth();
+                    }
+                }
+            } catch (guestErr) {
+                console.warn('[Guest Provision Warning]', guestErr);
+            }
+        }
+
         if (data.loggedIn) {
             const user = data.user;
+            const isGuest = data.isGuest || user.discord_id.startsWith('guest-');
             myDiscordId = user.discord_id;
             myName = user.username;
             myAvatarUrl = user.avatar_url;
@@ -2126,7 +2142,9 @@ async function checkAuth() {
             const avatarImg = $('#bc-my-avatar');
             if (avatarImg) avatarImg.src = user.avatar_url;
             const usernameSpan = $('#bc-my-username');
-            if (usernameSpan) usernameSpan.innerText = user.username;
+            if (usernameSpan) {
+                usernameSpan.innerText = user.username + (isGuest ? ' (Guest)' : '');
+            }
 
             document.documentElement.style.setProperty('--bc-user-color', user.color);
             
@@ -2152,13 +2170,17 @@ async function checkAuth() {
                 logoutBtn.addEventListener('click', handleLogout);
             }
 
-            // Fill welcome screen info and logout button
+            // Fill welcome screen info and Discord linking button if guest
             const welcomeUserInfo = $('#bc-welcome-user-info');
             if (welcomeUserInfo) {
-                welcomeUserInfo.innerHTML = `Connected as <strong>${user.username}</strong>. Not you? <button id="bc-welcome-logout-btn" style="background: none; border: none; color: #ff4444; text-decoration: underline; cursor: pointer; padding: 0; font: inherit;">Logout</button>`;
-                const welcomeLogoutBtn = $('#bc-welcome-logout-btn');
-                if (welcomeLogoutBtn) {
-                    welcomeLogoutBtn.addEventListener('click', handleLogout);
+                if (isGuest) {
+                    welcomeUserInfo.innerHTML = `Reading as <strong>${user.username}</strong> — <a href="/api/auth/discord" style="color: #5865F2; font-weight: bold; text-decoration: underline; margin-left: 6px;">Connect Discord Profile</a>`;
+                } else {
+                    welcomeUserInfo.innerHTML = `Connected as <strong>${user.username}</strong>. Not you? <button id="bc-welcome-logout-btn" style="background: none; border: none; color: #ff4444; text-decoration: underline; cursor: pointer; padding: 0; font: inherit;">Logout</button>`;
+                    const welcomeLogoutBtn = $('#bc-welcome-logout-btn');
+                    if (welcomeLogoutBtn) {
+                        welcomeLogoutBtn.addEventListener('click', handleLogout);
+                    }
                 }
             }
 
