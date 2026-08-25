@@ -370,12 +370,12 @@ function initSetupEvents() {
     }
 }
 
-// Send current mouse coordinates to the room, throttled to 50ms (20fps)
+let mouseMovePendingTimer = null;
+let lastMouseData = null;
+
+// Send current mouse coordinates to the room, throttled to 40ms (~25fps) with trailing update
 function sendMouseMove(e, isInsideIframe, doc) {
     if (!roomId) return;
-    const now = Date.now();
-    if (now - lastMoveTime < 50) return;
-    lastMoveTime = now;
 
     let x = e.clientX;
     let y = e.clientY;
@@ -392,13 +392,31 @@ function sendMouseMove(e, isInsideIframe, doc) {
     const pctX = x / window.innerWidth;
     const pctY = y / window.innerHeight;
 
-    if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({
-            type: 'mousemove',
-            x: pctX,
-            y: pctY,
-            index: currentSectionIndex
-        }));
+    lastMouseData = {
+        type: 'mousemove',
+        x: pctX,
+        y: pctY,
+        index: currentSectionIndex
+    };
+
+    const now = Date.now();
+    if (now - lastMoveTime >= 40) {
+        lastMoveTime = now;
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify(lastMouseData));
+        }
+        if (mouseMovePendingTimer) {
+            clearTimeout(mouseMovePendingTimer);
+            mouseMovePendingTimer = null;
+        }
+    } else if (!mouseMovePendingTimer) {
+        mouseMovePendingTimer = setTimeout(() => {
+            mouseMovePendingTimer = null;
+            lastMoveTime = Date.now();
+            if (ws && ws.readyState === WebSocket.OPEN && lastMouseData) {
+                ws.send(JSON.stringify(lastMouseData));
+            }
+        }, 40);
     }
 }
 
