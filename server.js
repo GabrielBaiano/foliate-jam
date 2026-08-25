@@ -326,20 +326,16 @@ app.get('/api/my-rooms', async (req, res) => {
             let bookPath = room.book_path;
             let hasBook = false;
             
-            if (room.book_path.startsWith('supabase://')) {
+            if (room.book_path && room.book_path.startsWith('supabase://')) {
                 if (supabase) {
                     const fileKey = room.book_path.replace('supabase://', '');
-                    const { data: files } = await supabase.storage.from('books').list('', { search: fileKey });
-                    const fileExists = files && files.some(f => f.name === fileKey);
-                    if (fileExists) {
-                        const { data: signedData } = await supabase.storage.from('books').createSignedUrl(fileKey, 86400);
-                        if (signedData && signedData.signedUrl) {
-                            bookPath = signedData.signedUrl;
-                            hasBook = true;
-                        }
+                    const { data: signedData } = await supabase.storage.from('books').createSignedUrl(fileKey, 86400);
+                    if (signedData && signedData.signedUrl) {
+                        bookPath = signedData.signedUrl;
+                        hasBook = true;
                     }
                 }
-            } else {
+            } else if (room.book_path) {
                 const filename = path.basename(room.book_path);
                 const physicalPath = path.join(uploadDir, filename);
                 hasBook = fs.existsSync(physicalPath);
@@ -499,29 +495,20 @@ app.get('/api/rooms/:roomId', async (req, res) => {
         let bookPath = room.book_path;
         let hasBook = false;
 
-        if (room.book_path.startsWith('supabase://')) {
+        if (room.book_path && room.book_path.startsWith('supabase://')) {
             if (supabase) {
                 const fileKey = room.book_path.replace('supabase://', '');
-                
-                // Verify that file still exists in bucket
-                const { data: files } = await supabase.storage
+                // Create signed URL for download (expires in 24 hours)
+                const { data: signedData } = await supabase.storage
                     .from('books')
-                    .list('', { search: fileKey });
-                
-                const fileExists = files && files.some(f => f.name === fileKey);
-                if (fileExists) {
-                    // Create signed URL for download (expires in 24 hours)
-                    const { data: signedData } = await supabase.storage
-                        .from('books')
-                        .createSignedUrl(fileKey, 86400);
+                    .createSignedUrl(fileKey, 86400);
 
-                    if (signedData && signedData.signedUrl) {
-                        bookPath = signedData.signedUrl;
-                        hasBook = true;
-                    }
+                if (signedData && signedData.signedUrl) {
+                    bookPath = signedData.signedUrl;
+                    hasBook = true;
                 }
             }
-        } else {
+        } else if (room.book_path) {
             // Local fallback
             const filename = path.basename(room.book_path);
             const physicalPath = path.join(uploadDir, filename);
