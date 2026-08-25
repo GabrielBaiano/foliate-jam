@@ -1526,3 +1526,34 @@
     to { transform: rotate(360deg); }
 }
 
+/* Reading Themes Styling Extensions */
+.theme-oled {
+    background-color: #000000 !important;
+    color: #e4e4e7 !important;
+}
+
+.theme-oled .your-room-card {
+    background: #000000;
+    border-color: #222222;
+}
+
+.theme-parchment {
+    background-color: #fbf0d9 !important;
+    color: #382a1d !important;
+}
+
+.theme-parchment .your-room-card {
+    background: #fbf0d9;
+    border-color: #e6d7b8;
+}
+
+.theme-solarized {
+    background-color: #002b36 !important;
+    color: #839496 !important;
+}
+
+.theme-solarized .your-room-card {
+    background: #002b36;
+    border-color: #073642;
+}
+

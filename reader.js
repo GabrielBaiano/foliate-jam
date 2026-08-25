@@ -17,13 +17,27 @@ if (savedTheme === 'light') {
     htmlEl.classList.add('theme-blue')
 }
 
-const getCSS = ({ spacing, justify, hyphenate, theme, size = 100 }) => {
+const getCSS = ({ spacing, justify, hyphenate, theme, fontFamily = 'publisher', size = 100 }) => {
     let themeCSS = ''
     if (theme === 'dark') {
         themeCSS = `
             body {
-                background-color: #09090b !important;
+                background-color: #18181b !important;
                 color: #f4f4f5 !important;
+            }
+        `
+    } else if (theme === 'oled') {
+        themeCSS = `
+            body {
+                background-color: #000000 !important;
+                color: #e4e4e7 !important;
+            }
+        `
+    } else if (theme === 'parchment') {
+        themeCSS = `
+            body {
+                background-color: #fbf0d9 !important;
+                color: #382a1d !important;
             }
         `
     } else if (theme === 'sepia') {
@@ -31,6 +45,13 @@ const getCSS = ({ spacing, justify, hyphenate, theme, size = 100 }) => {
             body {
                 background-color: #f4ebd0 !important;
                 color: #433422 !important;
+            }
+        `
+    } else if (theme === 'solarized') {
+        themeCSS = `
+            body {
+                background-color: #002b36 !important;
+                color: #839496 !important;
             }
         `
     } else if (theme === 'blue') {
@@ -51,7 +72,7 @@ const getCSS = ({ spacing, justify, hyphenate, theme, size = 100 }) => {
         themeCSS = `
             @media (prefers-color-scheme: dark) {
                 body {
-                    background-color: #09090b !important;
+                    background-color: #18181b !important;
                     color: #f4f4f5 !important;
                 }
             }
@@ -64,19 +85,24 @@ const getCSS = ({ spacing, justify, hyphenate, theme, size = 100 }) => {
         `
     }
 
+    let fontCSS = ''
+    if (fontFamily === 'serif') {
+        fontCSS = 'font-family: "Merriweather", Georgia, serif !important;'
+    } else if (fontFamily === 'sans-serif') {
+        fontCSS = 'font-family: "Inter", system-ui, -apple-system, sans-serif !important;'
+    } else if (fontFamily === 'monospace') {
+        fontCSS = 'font-family: "Fira Code", "Courier New", monospace !important;'
+    } else if (fontFamily === 'opendyslexic') {
+        fontCSS = 'font-family: "OpenDyslexic", "Comic Sans MS", sans-serif !important;'
+    }
+
     return `
         @namespace epub "http://www.idpf.org/2007/ops";
         html {
-            color-scheme: ${theme === 'system' ? 'light dark' : (theme === 'sepia' ? 'light' : theme)};
+            color-scheme: ${theme === 'system' ? 'light dark' : (theme === 'sepia' || theme === 'parchment' || theme === 'light' || theme === 'blue' ? 'light' : 'dark')};
             font-size: ${size}% !important;
         }
         ${themeCSS}
-        /* https://github.com/whatwg/html/issues/5426 */
-        @media (prefers-color-scheme: dark) {
-            a:link {
-                color: lightblue;
-            }
-        }
         p, li, blockquote, dd {
             line-height: ${spacing};
             text-align: ${justify ? 'justify' : 'start'};
@@ -87,6 +113,10 @@ const getCSS = ({ spacing, justify, hyphenate, theme, size = 100 }) => {
             -webkit-hyphenate-limit-lines: 2;
             hanging-punctuation: allow-end last;
             widows: 2;
+            ${fontCSS}
+        }
+        body {
+            ${fontCSS}
         }
         /* prevent the above from overriding the align attribute */
         [align="left"] { text-align: left; }
@@ -133,6 +163,7 @@ class Reader {
         justify: true,
         hyphenate: localStorage.getItem('paperback-hyphenate') !== 'false',
         theme: localStorage.getItem('paperback-theme') || 'system',
+        fontFamily: localStorage.getItem('paperback-font-family') || 'publisher',
         size: parseInt(localStorage.getItem('paperback-font-size') || '100', 10)
     }
     annotations = new Map()
@@ -152,18 +183,18 @@ class Reader {
     setTheme(theme) {
         localStorage.setItem('paperback-theme', theme)
         const html = document.documentElement
-        html.classList.remove('theme-light', 'theme-dark', 'theme-sepia', 'theme-blue')
-        if (theme === 'light') {
-            html.classList.add('theme-light')
-        } else if (theme === 'dark') {
-            html.classList.add('theme-dark')
-        } else if (theme === 'sepia') {
-            html.classList.add('theme-sepia')
-        } else if (theme === 'blue') {
-            html.classList.add('theme-blue')
-        }
+        html.classList.remove('theme-light', 'theme-dark', 'theme-sepia', 'theme-blue', 'theme-oled', 'theme-parchment', 'theme-solarized')
+        html.classList.add(`theme-${theme}`)
         
         this.style.theme = theme
+        if (this.view && this.view.renderer) {
+            this.view.renderer.setStyles?.(getCSS(this.style))
+        }
+    }
+
+    setFontFamily(fontFamily) {
+        localStorage.setItem('paperback-font-family', fontFamily)
+        this.style.fontFamily = fontFamily
         if (this.view && this.view.renderer) {
             this.view.renderer.setStyles?.(getCSS(this.style))
         }
@@ -472,6 +503,22 @@ class Reader {
                         isThemeRow: true,
                         activeTheme: this.style.theme,
                         onSelectTheme: (theme) => this.setTheme(theme)
+                    }
+                ]
+            },
+            {
+                items: [
+                    {
+                        id: 'menu-font-family-seg',
+                        isSegmented: true,
+                        selectedValue: this.style.fontFamily || 'publisher',
+                        options: [
+                            { label: 'Default', value: 'publisher' },
+                            { label: 'Serif', value: 'serif' },
+                            { label: 'Sans', value: 'sans-serif' },
+                            { label: 'Dyslexic', value: 'opendyslexic' }
+                        ],
+                        onSelect: (val) => this.setFontFamily(val)
                     }
                 ]
             },
