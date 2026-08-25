@@ -31,6 +31,14 @@ const db = new sqlite3.Database(dbPath, (err) => {
 
 // Helper for database schema migrations / table setup
 db.serialize(() => {
+    // Enable WAL mode and NORMAL synchronous for high-performance concurrent reads/writes
+    db.run('PRAGMA journal_mode = WAL;', (err) => {
+        if (err) console.error('[DB Pragma Error] Failed to enable WAL mode:', err);
+    });
+    db.run('PRAGMA synchronous = NORMAL;', (err) => {
+        if (err) console.error('[DB Pragma Error] Failed to set synchronous = NORMAL:', err);
+    });
+
     // 1. Users Table
     db.run(`
         CREATE TABLE IF NOT EXISTS users (
@@ -85,6 +93,13 @@ db.serialize(() => {
             FOREIGN KEY (discord_id) REFERENCES users(discord_id) ON DELETE CASCADE
         )
     `);
+
+    // Create indexes for fast joins and lookups
+    db.run('CREATE INDEX IF NOT EXISTS idx_room_members_room ON room_members(room_id)');
+    db.run('CREATE INDEX IF NOT EXISTS idx_room_members_user ON room_members(discord_id)');
+    db.run('CREATE INDEX IF NOT EXISTS idx_highlights_room ON highlights(room_id)');
+    db.run('CREATE INDEX IF NOT EXISTS idx_rooms_last_active ON rooms(last_active)');
+    db.run('CREATE INDEX IF NOT EXISTS idx_rooms_creator ON rooms(creator_id)');
 
     // Run Alter Table migrations safely to avoid crashes on existing databases
     db.run("ALTER TABLE rooms ADD COLUMN last_active TEXT", (err) => {
