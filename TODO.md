@@ -26,10 +26,10 @@ Este documento rastreia as melhorias, novas funcionalidades, otimizações de pe
 
 ## 🚪 Fase 1: Onboarding e Experiência Inicial (UX)
 
-- [ ] **Modo Convidado ("Read as Guest")**
+- [x] **Modo Convidado ("Read as Guest")**
   - *Descrição:* Permitir criar salas e entrar em salas sem obrigatoriedade imediata de login com o Discord, reduzindo a fricção inicial de novos leitores.
   - *Arquivos envolvidos:* [`server.js`](file:///home/gabrielgama/.gemini/antigravity/scratch/paperback/server.js), [`bookclub.js`](file:///home/gabrielgama/.gemini/antigravity/scratch/paperback/bookclub.js), [`reader.html`](file:///home/gabrielgama/.gemini/antigravity/scratch/paperback/reader.html)
-- [ ] **Banner de Vinculação de Perfil Discord**
+- [x] **Banner de Vinculação de Perfil Discord**
   - *Descrição:* Exibir opção para o leitor convidado migrar para uma conta Discord salva sem perder seu progresso ou destaques.
   - *Arquivos envolvidos:* [`bookclub.js`](file:///home/gabrielgama/.gemini/antigravity/scratch/paperback/bookclub.js), [`reader.html`](file:///home/gabrielgama/.gemini/antigravity/scratch/paperback/reader.html)
 
@@ -37,13 +37,13 @@ Este documento rastreia as melhorias, novas funcionalidades, otimizações de pe
 
 ## 🎨 Fase 2: Personalização Tipográfica e Temas Visuais
 
-- [ ] **Seletor de Família de Fontes (Font Family)**
+- [x] **Seletor de Família de Fontes (Font Family)**
   - *Descrição:* Alternar entre Serif (Merriweather/Georgia), Sans-Serif (Inter), Monospace, OpenDyslexic e Padrão da Editora.
   - *Arquivos envolvidos:* [`reader.js`](file:///home/gabrielgama/.gemini/antigravity/scratch/paperback/reader.js), [`reader.html`](file:///home/gabrielgama/.gemini/antigravity/scratch/paperback/reader.html)
 - [ ] **Ajuste de Margens Laterais e Largura da Coluna**
   - *Descrição:* Permitir alterar a largura útil do texto (Estrita, Normal, Larga).
   - *Arquivos envolvidos:* [`paginator.js`](file:///home/gabrielgama/.gemini/antigravity/scratch/paperback/paginator.js), [`reader.js`](file:///home/gabrielgama/.gemini/antigravity/scratch/paperback/reader.js)
-- [ ] **Novos Temas Visuais de Leitura**
+- [x] **Novos Temas Visuais de Leitura**
   - *Descrição:* Adicionar temas OLED Black (`#000000`), Warm Parchment (Sepia suave) e Solarized Dark.
   - *Arquivos envolvidos:* [`reader.js`](file:///home/gabrielgama/.gemini/antigravity/scratch/paperback/reader.js), [`reader.html`](file:///home/gabrielgama/.gemini/antigravity/scratch/paperback/reader.html), [`bookclub.css`](file:///home/gabrielgama/.gemini/antigravity/scratch/paperback/bookclub.css)
 
