@@ -1701,13 +1701,41 @@ async function loadHistoryList() {
                     const badgeColor = room.hasBook ? '#259b24' : '#ff9800';
                     
                     roomCard.innerHTML = `
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <strong style="font-size: 0.9em; max-width: 70%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${titleText}</strong>
-                            <span style="font-size: 0.75em; padding: 2px 6px; border-radius: 4px; background-color: ${badgeColor}; color: white; font-weight: bold;">${badgeText}</span>
+                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+                            <strong style="font-size: 0.9em; max-width: 65%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${titleText}</strong>
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <span style="font-size: 0.75em; padding: 2px 6px; border-radius: 4px; background-color: ${badgeColor}; color: white; font-weight: bold;">${badgeText}</span>
+                                <button class="bc-delete-room-btn" title="Remove room" style="background: none; border: none; color: #ef4444; opacity: 0.7; cursor: pointer; padding: 2px 4px; font-size: 14px; line-height: 1; border-radius: 4px; transition: opacity 0.15s, background 0.15s;" aria-label="Remove room">✕</button>
+                            </div>
                         </div>
                         <span style="font-size: 0.8em; opacity: 0.7;">${authorText}</span>
                         <span style="font-size: 0.75em; opacity: 0.5; font-family: monospace;">Code: ${room.roomId}</span>
                     `;
+
+                    const deleteBtn = roomCard.querySelector('.bc-delete-room-btn');
+                    if (deleteBtn) {
+                        deleteBtn.addEventListener('mouseenter', () => { deleteBtn.style.opacity = '1'; deleteBtn.style.background = 'rgba(239,68,68,0.15)'; });
+                        deleteBtn.addEventListener('mouseleave', () => { deleteBtn.style.opacity = '0.7'; deleteBtn.style.background = 'none'; });
+                        deleteBtn.addEventListener('click', async (e) => {
+                            e.stopPropagation();
+                            if (confirm(`Remove room "${titleText}"?`)) {
+                                try {
+                                    const delRes = await fetch(`/api/rooms/${room.roomId}`, { method: 'DELETE' });
+                                    if (delRes.ok) {
+                                        roomCard.remove();
+                                        if (historyList.children.length === 0) {
+                                            historyPanel.style.display = 'none';
+                                        }
+                                    } else {
+                                        const errData = await delRes.json();
+                                        alert(errData.error || 'Failed to remove room');
+                                    }
+                                } catch (err) {
+                                    console.error('[Book Club] Error removing room:', err);
+                                }
+                            }
+                        });
+                    }
                     
                     roomCard.addEventListener('mouseenter', () => {
                         roomCard.style.backgroundColor = 'rgba(128, 128, 128, 0.08)';

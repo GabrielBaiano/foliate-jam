@@ -94,13 +94,15 @@ const storage = supabase
             cb(null, uniqueSuffix + path.extname(file.originalname));
         }
     });
+const ALLOWED_EXTENSIONS = ['.epub', '.pdf', '.mobi', '.prc', '.azw', '.azw3', '.fb2', '.fbz', '.cbz', '.cbr', '.cb7', '.cbt'];
+
 const upload = multer({
     storage,
-    limits: { fileSize: 20 * 1024 * 1024 }, // Limit files to 20MB to prevent server abuse
+    limits: { fileSize: 50 * 1024 * 1024 }, // Limit files to 50MB to support large PDFs and e-books
     fileFilter: (req, file, cb) => {
         const ext = path.extname(file.originalname).toLowerCase();
-        if (ext !== '.epub') {
-            return cb(new Error('Only EPUB files (.epub) are allowed.'));
+        if (!ALLOWED_EXTENSIONS.includes(ext)) {
+            return cb(new Error('Unsupported file format. Supported formats: EPUB, PDF, MOBI, AZW, FB2, CBZ, CBR.'));
         }
         cb(null, true);
     }
@@ -462,7 +464,8 @@ app.post('/api/rooms', upload.single('book'), async (req, res) => {
     try {
         if (supabase) {
             // Upload to Supabase Storage
-            const fileKey = `${roomId}-${Date.now()}.epub`;
+            const fileExt = path.extname(req.file.originalname).toLowerCase() || '.epub';
+            const fileKey = `${roomId}-${Date.now()}${fileExt}`;
             const { data, error } = await supabase.storage
                 .from('books')
                 .upload(fileKey, req.file.buffer, {
@@ -585,9 +588,10 @@ app.delete('/api/rooms/:roomId', async (req, res) => {
             return res.status(404).json({ error: 'Room not found' });
         }
 
-        // Limit check: only creator (or whitelist exempt admins) can delete
-        if (room.creator_id !== user.discord_id && !isLimitExempt(user)) {
-            return res.status(403).json({ error: 'Only the creator of the room can delete it.' });
+        // Limit check: creator, exempt admin, or any member if room is expired (book_path is empty)
+        const isExpired = !room.book_path || room.book_path === '';
+        if (!isExpired && room.creator_id !== user.discord_id && !isLimitExempt(user)) {
+            return res.status(403).json({ error: 'Only the creator of the room can delete active rooms.' });
         }
 
         // 1. Delete physical book file if it exists
@@ -702,7 +706,8 @@ app.post('/api/rooms/:roomId/reupload', upload.single('book'), async (req, res) 
 
         if (supabase) {
             // Upload to Supabase Storage
-            const fileKey = `${roomId}-${Date.now()}.epub`;
+            const fileExt = path.extname(req.file.originalname).toLowerCase() || '.epub';
+            const fileKey = `${roomId}-${Date.now()}${fileExt}`;
             const { data, error } = await supabase.storage
                 .from('books')
                 .upload(fileKey, req.file.buffer, {
@@ -1198,6 +1203,23 @@ function startPruningTask() {
                     }
                 }
             }
+            
+            // 2. Permanently purge expired rooms older than 7 days
+            const EXPIRED_RETENTION_DAYS = 7;
+            const expiredCutoff = new Date(Date.now() - EXPIRED_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
+            const oldExpiredRooms = await dbAll(
+                "SELECT room_id FROM rooms WHERE (book_path = '' OR book_path IS NULL) AND (last_active < ? OR last_active IS NULL OR last_active = '')",
+                [expiredCutoff]
+            );
+            
+            if (oldExpiredRooms && oldExpiredRooms.length > 0) {
+                console.log(`[Pruner] Permanently purging ${oldExpiredRooms.length} expired rooms older than ${EXPIRED_RETENTION_DAYS} days.`);
+                for (const r of oldExpiredRooms) {
+                    await dbRun("DELETE FROM room_members WHERE room_id = ?", [r.room_id]);
+                    await dbRun("DELETE FROM highlights WHERE room_id = ?", [r.room_id]);
+                    await dbRun("DELETE FROM rooms WHERE room_id = ?", [r.room_id]);
+                }
+            }
         } catch (e) {
             console.error('[Pruner Error] Pruning task encountered an error:', e);
         }
@@ -1210,11 +1232,11 @@ startPruningTask();
 app.use((err, req, res, next) => {
     if (err instanceof multer.MulterError) {
         if (err.code === 'LIMIT_FILE_SIZE') {
-            return res.status(400).json({ error: 'File too large. Maximum allowed size is 20MB.' });
+            return res.status(400).json({ error: 'File too large. Maximum allowed size is 50MB.' });
         }
         return res.status(400).json({ error: `Upload error: ${err.message}` });
     }
-    if (err.message === 'Only EPUB files (.epub) are allowed.') {
+    if (err.message && err.message.startsWith('Unsupported file format')) {
         return res.status(400).json({ error: err.message });
     }
     console.error('[Unhandled Server Error]', err);

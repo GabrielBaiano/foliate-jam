@@ -1718,11 +1718,11 @@ foliate-view {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: space-between;
+    justify-content: center;
     text-align: center;
     position: relative;
     background: transparent;
-    padding: 36px 0 24px 0;
+    padding: 0;
     box-sizing: border-box;
 }
 
@@ -1730,7 +1730,8 @@ foliate-view {
     display: flex;
     flex-direction: column;
     align-items: center;
-    max-width: 380px;
+    max-width: 400px;
+    width: 100%;
     padding: 0 24px;
     box-sizing: border-box;
 }
@@ -1844,7 +1845,23 @@ foliate-view {
     transition: opacity 0.2s, color 0.2s;
     font-family: inherit;
     text-decoration: underline;
-    text-underline-offset: 2px;
+.bc-back-btn {
+    position: absolute;
+    top: 32px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    margin: 0;
+}
+
+.bc-copyright {
+    position: absolute;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    font-size: 0.78rem;
+    white-space: nowrap;
 }
 
 .bc-copyright:hover {
@@ -1874,23 +1891,27 @@ foliate-view {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
+    align-items: center;
     gap: 8px;
+    width: 100%;
 }
 
 .support-alt-item {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 6px;
     font-size: 0.78rem;
     font-weight: 500;
     color: var(--text-color, #0f172a);
     text-decoration: none;
-    padding: 6px 12px;
+    padding: 7px 14px;
     border-radius: 8px;
     border: 1px solid var(--menu-border, rgba(0, 0, 0, 0.12));
     background: var(--menu-hover-bg, rgba(0, 0, 0, 0.04));
     transition: color 0.15s, background 0.15s, border-color 0.15s;
     font-family: inherit;
+    box-sizing: border-box;
 }
 
 .support-alt-item:hover {
@@ -1908,7 +1929,7 @@ foliate-view {
     opacity: 1;
 }
 </style>
-<input type="file" id="file-input" accept=".epub,.pdf,.mobi,.prc,.azw,.azw3,.fb2,.fbz,.cbz,application/pdf,application/epub+zip" hidden>
+<input type="file" id="file-input" accept=".epub,.pdf,.mobi,.prc,.azw,.azw3,.fb2,.fbz,.cbz,.cbr,.cb7,.cbt,application/pdf,application/epub+zip,application/x-mobipocket-ebook" hidden>
 <div id="drop-target" class="filter">
     <div class="aurora-bg-container">
         <div class="aurora-bg-effect"></div>
@@ -1982,7 +2003,7 @@ foliate-view {
                 <span>back</span>
             </button>
             
-            <div class="drop-more-content" style="display: flex; flex-direction: column; align-items: center; max-width: 380px; padding: 0 24px; box-sizing: border-box; gap: 32px;">
+            <div class="drop-more-content" style="gap: 28px;">
                 <!-- Support Section -->
                 <div style="text-align: center; display: flex; flex-direction: column; align-items: center; gap: 20px;">
                     <div>
