@@ -760,7 +760,7 @@ const open = async file => {
 
     try {
         if (window.updateLoadingProgress) {
-            window.updateLoadingProgress(45, 'Processing EPUB format...')
+            window.updateLoadingProgress(45, 'Processing book file...')
         }
         
         await reader.open(file)
